@@ -152,7 +152,12 @@ app.post('/users', upload.single('avatar'), function (req, res) { return __await
             case 2:
                 err_4 = _a.sent();
                 res.status(422);
-                err_4.errors ? res.send(err_4) : res.send('A profile pictures is needed');
+                if (err_4.errors || err_4.keyPattern) {
+                    res.send(err_4);
+                }
+                else {
+                    res.send('A profile picture is needed');
+                }
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }

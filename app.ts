@@ -69,7 +69,11 @@ app.post('/users', upload.single('avatar'), async (req, res) => {
         res.json(user)
     } catch (err) {
         res.status(422)
-        err.errors ? res.send(err) : res.send('A profile pictures is needed')
+        if (err.errors || err.keyPattern) {
+            res.send(err)
+        } else {
+            res.send('A profile picture is needed')
+        }
     }
 })
 

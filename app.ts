@@ -1,17 +1,28 @@
-const express = require('express')
+import express from 'express';
+import { File } from './models/File';
+import { unlink } from 'fs';
+import { User } from './models/User';
+
+declare global {
+    namespace Express {
+        interface Request {
+            file: File
+        }
+    }
+}
 const app = express()
 const mongoose = require('mongoose');
 const path = require('path');
 const multer = require('multer')
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
+    destination: (req: any, file: any, cb: any) => {
         cb(null, 'uploads');
     },
-    filename: (req, file, cb) => {
+    filename: (req: any, file: any, cb: any) => {
         cb(null, Date.now() + path.extname(file.originalname));
     }
 });
-const fileFilter = (req, file, cb) => {
+const fileFilter = (req: any, file: any, cb: any) => {
     if (file.mimetype == 'image/jpeg' || file.mimetype == 'image/png') {
         cb(null, true);
     } else {
@@ -98,7 +109,7 @@ app.delete('/users/:id', async (req, res) => {
     }
 })
 
-//UPLOAD
+//UPLOAD IMG 
 app.post('/upload', upload.single('avatar'), (req, res) => {
     if (!req.file) {
         console.log("No file received");
@@ -106,15 +117,42 @@ app.post('/upload', upload.single('avatar'), (req, res) => {
             success: false
         });
     } else {
+
         res.json(req.file)
 
+    }
+});
+
+//CHANGE IMAGE OF SPECIFIC USER AND DELETE OLD ONE
+app.post('/upload/:id', upload.single('avatar'), async (req, res) => {
+    if (!req.file) {
+        console.log("No file received");
+        return res.send({
+            success: false
+        });
+    } else {
+        try {
+            //DELETE OLD IMAGE
+            const userToDel: User = await User.findOne({ _id: req.params.id })
+            const filename = userToDel.photo.replace('http://localhost:3000/static/', '')
+            unlink('uploads/' + filename, (err) => {
+                if (err) throw err;
+                console.log("deleted file")
+            })
+
+            //UPDATE USER WITH NEW PATH
+            const user = await User.updateOne({ _id: req.params.id }, { photo: 'http://localhost:3000/static/' + req.file.filename })
+            res.json(user)
+        } catch (e) {
+            console.log(e)
+        }
     }
 });
 
 //POST / UPLOAD
 app.post('/users/avatar', upload.single('avatar'), async (req, res) => {
     try {
-        const user = await User.create({ ...req.body, photo: req.file.filename });
+        const user = await User.create({ ...req.body, photo: 'http://localhost:3000/static/' + req.file.filename });
         res.json(user)
     } catch (err) {
         res.send(err)

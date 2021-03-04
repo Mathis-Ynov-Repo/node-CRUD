@@ -53,10 +53,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var express_1 = __importDefault(require("express"));
 var fs_1 = require("fs");
 var app = express_1.default();
-var mongoose = require('mongoose');
+var mongoose_1 = __importDefault(require("mongoose"));
 var path = require('path');
-var multer = require('multer');
-var storage = multer.diskStorage({
+var multer_1 = __importDefault(require("multer"));
+var user_model_1 = __importDefault(require("./models/user.model"));
+var storage = multer_1.default.diskStorage({
     destination: function (req, file, cb) {
         cb(null, 'uploads');
     },
@@ -72,19 +73,8 @@ var fileFilter = function (req, file, cb) {
         cb(null, false);
     }
 };
-var upload = multer({ storage: storage, fileFilter: fileFilter });
-mongoose.connect('mongodb://localhost:27017/nodejs', { useNewUrlParser: true, useUnifiedTopology: true });
-var User = mongoose.model('user', {
-    name: String,
-    surname: String,
-    email: String,
-    password: String,
-    birthDate: Date,
-    civility: String,
-    longitude: Number,
-    latitude: Number,
-    photo: String
-});
+var upload = multer_1.default({ storage: storage, fileFilter: fileFilter });
+mongoose_1.default.connect('mongodb://localhost:27017/nodejs', { useNewUrlParser: true, useUnifiedTopology: true });
 app.use(express_1.default.json());
 app.use('/static', express_1.default.static(__dirname + '/uploads'));
 //GET
@@ -94,7 +84,7 @@ app.get('/users', function (req, res) { return __awaiter(void 0, void 0, void 0,
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, User.find({})];
+                return [4 /*yield*/, user_model_1.default.find({})];
             case 1:
                 users = _a.sent();
                 res.send(users);
@@ -114,10 +104,10 @@ app.get('/users/:id', function (req, res) { return __awaiter(void 0, void 0, voi
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, User.findOne({ _id: req.params.id })];
+                return [4 /*yield*/, user_model_1.default.findOne({ _id: req.params.id })];
             case 1:
                 user = _a.sent();
-                res.json(user);
+                user ? res.json(user) : res.status(404).send('Not Found');
                 return [3 /*break*/, 3];
             case 2:
                 err_2 = _a.sent();
@@ -127,14 +117,14 @@ app.get('/users/:id', function (req, res) { return __awaiter(void 0, void 0, voi
         }
     });
 }); });
-//POST
-app.post('/users', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+//POST (PREVIOUS WITHOUT FILE UPLOAD)
+app.post('/old-users', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var user, err_3;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, User.create(req.body)];
+                return [4 /*yield*/, user_model_1.default.create(req.body)];
             case 1:
                 user = _a.sent();
                 res.json(user);
@@ -147,37 +137,38 @@ app.post('/users', function (req, res) { return __awaiter(void 0, void 0, void 0
         }
     });
 }); });
-//LOGIN
-app.post('/login', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+//POST + UPLOAD
+app.post('/users', upload.single('avatar'), function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var user, err_4;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, User.findOne({ password: req.body.password, email: req.body.password })];
+                return [4 /*yield*/, user_model_1.default.create(__assign(__assign({}, req.body), { photo: 'http://localhost:3000/static/' + req.file.filename }))];
             case 1:
                 user = _a.sent();
                 res.json(user);
                 return [3 /*break*/, 3];
             case 2:
                 err_4 = _a.sent();
-                res.send(err_4);
+                res.status(422);
+                err_4.errors ? res.send(err_4) : res.send('A profile pictures is needed');
                 return [3 /*break*/, 3];
             case 3: return [2 /*return*/];
         }
     });
 }); });
-//PUT
-app.put('/users/:id', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+//LOGIN
+app.post('/login', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var user, err_5;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, User.updateOne({ _id: req.params.id }, req.body)];
+                return [4 /*yield*/, user_model_1.default.findOne({ password: req.body.password, email: req.body.email })];
             case 1:
                 user = _a.sent();
-                res.json(user);
+                user ? res.json(user) : res.status(404).send('Not Found');
                 return [3 /*break*/, 3];
             case 2:
                 err_5 = _a.sent();
@@ -187,14 +178,14 @@ app.put('/users/:id', function (req, res) { return __awaiter(void 0, void 0, voi
         }
     });
 }); });
-//DELETE
-app.delete('/users/:id', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+//PUT
+app.put('/users/:id', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var user, err_6;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
                 _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, User.deleteOne({ _id: req.params.id })];
+                return [4 /*yield*/, user_model_1.default.updateOne({ _id: req.params.id }, req.body)];
             case 1:
                 user = _a.sent();
                 res.json(user);
@@ -207,7 +198,27 @@ app.delete('/users/:id', function (req, res) { return __awaiter(void 0, void 0, 
         }
     });
 }); });
-//UPLOAD IMG 
+//DELETE
+app.delete('/users/:id', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var user, err_7;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 2, , 3]);
+                return [4 /*yield*/, user_model_1.default.deleteOne({ _id: req.params.id })];
+            case 1:
+                user = _a.sent();
+                res.json(user);
+                return [3 /*break*/, 3];
+            case 2:
+                err_7 = _a.sent();
+                res.send(err_7);
+                return [3 /*break*/, 3];
+            case 3: return [2 /*return*/];
+        }
+    });
+}); });
+//UPLOAD AN IMAGE 
 app.post('/upload', upload.single('avatar'), function (req, res) {
     if (!req.file) {
         console.log("No file received");
@@ -219,7 +230,7 @@ app.post('/upload', upload.single('avatar'), function (req, res) {
         res.json(req.file);
     }
 });
-//CHANGE IMAGE OF SPECIFIC USER AND DELETE OLD ONE
+//CHANGE IMAGE OF SPECIFIC USER AND DELETE PREVIOUS ONE
 app.post('/upload/:id', upload.single('avatar'), function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var userToDel, filename, user, e_1;
     return __generator(this, function (_a) {
@@ -232,16 +243,21 @@ app.post('/upload/:id', upload.single('avatar'), function (req, res) { return __
                     })];
             case 1:
                 _a.trys.push([1, 4, , 5]);
-                return [4 /*yield*/, User.findOne({ _id: req.params.id })];
+                return [4 /*yield*/, user_model_1.default.findOne({ _id: req.params.id })];
             case 2:
                 userToDel = _a.sent();
-                filename = userToDel.photo.replace('http://localhost:3000/static/', '');
-                fs_1.unlink('uploads/' + filename, function (err) {
-                    if (err)
-                        throw err;
-                    console.log("deleted file");
-                });
-                return [4 /*yield*/, User.updateOne({ _id: req.params.id }, { photo: 'http://localhost:3000/static/' + req.file.filename })];
+                if (userToDel) {
+                    filename = userToDel.photo.replace('http://localhost:3000/static/', '');
+                    fs_1.unlink('uploads/' + filename, function (err) {
+                        if (err)
+                            throw err;
+                        console.log("deleted file");
+                    });
+                }
+                else {
+                    res.json({ status_code: 404, message: "Not Found" });
+                }
+                return [4 /*yield*/, user_model_1.default.updateOne({ _id: req.params.id }, { photo: 'http://localhost:3000/static/' + req.file.filename })];
             case 3:
                 user = _a.sent();
                 res.json(user);
@@ -251,26 +267,6 @@ app.post('/upload/:id', upload.single('avatar'), function (req, res) { return __
                 console.log(e_1);
                 return [3 /*break*/, 5];
             case 5: return [2 /*return*/];
-        }
-    });
-}); });
-//POST / UPLOAD
-app.post('/users/avatar', upload.single('avatar'), function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var user, err_7;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, User.create(__assign(__assign({}, req.body), { photo: 'http://localhost:3000/static/' + req.file.filename }))];
-            case 1:
-                user = _a.sent();
-                res.json(user);
-                return [3 /*break*/, 3];
-            case 2:
-                err_7 = _a.sent();
-                res.send(err_7);
-                return [3 /*break*/, 3];
-            case 3: return [2 /*return*/];
         }
     });
 }); });

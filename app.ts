@@ -4,7 +4,11 @@ import { unlink } from 'fs';
 
 const app = express()
 import mongoose from 'mongoose';
+const pathBuild = `${__dirname}/dist`;
+var cors = require('cors')
 const path = require('path');
+const history = require('connect-history-api-fallback');
+
 import multer, { FileFilterCallback } from 'multer';
 import User from './models/user.model';
 const storage = multer.diskStorage({
@@ -28,11 +32,21 @@ const upload = multer({ storage: storage, fileFilter: fileFilter })
 mongoose.connect('mongodb://localhost:27017/nodejs', { useNewUrlParser: true, useUnifiedTopology: true });
 
 
+app.use(cors())
+app.use(express.static(pathBuild));
+app.use(history({
+    disableDotRule: true,
+}));
+app.use(express.static(pathBuild));
 app.use(express.json())
 app.use('/static', express.static(__dirname + '/uploads'));
 
+app.get('/', (req, res) => {
+    res.sendFile(`${path}/index.html`);
+});
+
 //GET
-app.get('/users', async (req, res) => {
+app.get('/api/users', async (req, res) => {
     try {
         const users = await User.find({});
         res.send(users)
@@ -41,8 +55,17 @@ app.get('/users', async (req, res) => {
     }
 })
 
+app.get('/api/valorant', async (req, res) => {
+    try {
+        const val = { missile: 54, name: "Viber" };
+        res.send(val)
+    } catch (err) {
+        res.send(err)
+    }
+})
+
 //GET ONE
-app.get('/users/:id', async (req, res) => {
+app.get('/api/users/:id', async (req, res) => {
     try {
         const user = await User.findOne({ _id: req.params.id });
         user ? res.json(user) : res.status(404).send('Not Found')
@@ -53,7 +76,7 @@ app.get('/users/:id', async (req, res) => {
 })
 
 //POST (PREVIOUS WITHOUT FILE UPLOAD)
-app.post('/old-users', async (req, res) => {
+app.post('/api/old-users', async (req, res) => {
     try {
         const user = await User.create(req.body);
         res.json(user)
@@ -63,7 +86,7 @@ app.post('/old-users', async (req, res) => {
 })
 
 //POST + UPLOAD
-app.post('/users', upload.single('avatar'), async (req, res) => {
+app.post('/api/users', upload.single('avatar'), async (req, res) => {
     try {
         const user = await User.create({ ...req.body, photo: 'http://localhost:3000/static/' + req.file.filename });
         res.json(user)
@@ -78,7 +101,7 @@ app.post('/users', upload.single('avatar'), async (req, res) => {
 })
 
 //LOGIN
-app.post('/login', async (req, res) => {
+app.post('/api/login', async (req, res) => {
     try {
         const user = await User.findOne({ password: req.body.password, email: req.body.email });
         user ? res.json(user) : res.status(404).send('Not Found')
@@ -88,7 +111,7 @@ app.post('/login', async (req, res) => {
 })
 
 //PUT
-app.put('/users/:id', async (req, res) => {
+app.put('/api/users/:id', async (req, res) => {
     try {
         const user = await User.updateOne({ _id: req.params.id }, req.body);
         res.json(user)
@@ -98,7 +121,7 @@ app.put('/users/:id', async (req, res) => {
 })
 
 //DELETE
-app.delete('/users/:id', async (req, res) => {
+app.delete('/api/users/:id', async (req, res) => {
     try {
         const user = await User.deleteOne({ _id: req.params.id });
         res.json(user)
@@ -108,7 +131,7 @@ app.delete('/users/:id', async (req, res) => {
 })
 
 //UPLOAD AN IMAGE 
-app.post('/upload', upload.single('avatar'), (req, res) => {
+app.post('/api/upload', upload.single('avatar'), (req, res) => {
     if (!req.file) {
         console.log("No file received");
         return res.send({
@@ -122,7 +145,7 @@ app.post('/upload', upload.single('avatar'), (req, res) => {
 });
 
 //CHANGE IMAGE OF SPECIFIC USER AND DELETE PREVIOUS ONE
-app.post('/upload/:id', upload.single('avatar'), async (req, res) => {
+app.post('/api/upload/:id', upload.single('avatar'), async (req, res) => {
     if (!req.file) {
         console.log("No file received");
         return res.send({
